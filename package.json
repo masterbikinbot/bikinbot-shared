@@ -1,0 +1,17 @@
+{
+  "name": "bikinbot-shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BikinBot shared code library — config, templates, skills, supabase helpers",
+  "exports": {
+    "./shared": "./shared/src/index.ts",
+    "./shared/*": "./shared/src/*.ts",
+    "./supabase": "./supabase/src/index.ts",
+    "./supabase/*": "./supabase/src/*.ts"
+  },
+  "files": ["shared", "supabase"],
+  "peerDependencies": {
+    "@supabase/ssr": ">=0.8.0",
+    "@supabase/supabase-js": ">=2.0.0"
+  }
+}
