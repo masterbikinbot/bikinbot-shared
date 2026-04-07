@@ -431,6 +431,5 @@ export const SKILL_PATHS = {
 
 // --- Added during Phase 3 centralization ---
 export const CONTABO_PASSWORD = process.env.CONTABO_PASSWORD || ''
-export const TELEGRAM_ALERT_TOKEN = process.env.TELEGRAM_ALERT_TOKEN || ''
 export const ADMIN_KEY = process.env.ADMIN_KEY || ''
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0'
