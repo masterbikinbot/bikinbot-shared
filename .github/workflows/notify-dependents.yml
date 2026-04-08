@@ -1,0 +1,22 @@
+name: Notify dependents
+on:
+  push:
+    branches: [master]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger bikinbot-fe deploy
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          repository: masterbikinbot/bikinbot-fe
+          event-type: shared-updated
+
+      - name: Trigger bikinbot-be deploy
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          repository: masterbikinbot/bikinbot-be
+          event-type: shared-updated
