@@ -229,7 +229,7 @@ export interface ModelInfo {
   isDefault?: boolean
 }
 
-// Curated & verified against OpenRouter live API (15 Mar 2026)
+// Curated & verified against OpenRouter live API (11 Apr 2026)
 // IDs must match OpenRouter exactly. Update here = reflected in API + FE.
 export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
   // ─ GRATIS ────────────────────────────────────────────────
@@ -251,18 +251,6 @@ export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
     description: 'Meta gratis. 70B parameter, general purpose.',
   },
   // ─ HEMAT ─────────────────────────────────────────────────
-  'xiaomi/mimo-v2-pro': {
-    name: 'MiMo V2 Pro',
-    costTier: 'hemat',
-    description: 'Xiaomi. Cepat & hemat, text-only.',
-  },
-  'google/gemini-2.5-flash': {
-    name: 'Gemini 2.5 Flash',
-    costTier: 'hemat',
-    description: 'Default BikinBot. Tercepat dari Google. 1M context.',
-    caps: ['image', 'audio', 'video', 'file'],
-    isDefault: true,
-  },
   'mistralai/mistral-small-3.1-24b-instruct': {
     name: 'Mistral Small 3.1',
     costTier: 'hemat',
@@ -281,10 +269,10 @@ export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
     description: 'Gemini lite. Semua media, harga hemat.',
     caps: ['image', 'audio', 'video'],
   },
-  'deepseek/deepseek-v3.2': {
-    name: 'DeepSeek V3.2',
+  'minimax/minimax-m2.5': {
+    name: 'MiniMax M2.5',
     costTier: 'hemat',
-    description: 'Open-source terbaru China. Coding & chat pintar.',
+    description: 'MiniMax. Cepat & efisien, 196K context.',
   },
   'openai/gpt-4o-mini': {
     name: 'GPT-4o Mini',
@@ -298,11 +286,32 @@ export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
     description: 'Meta terbaru. 1M context, sangat efisien.',
     caps: ['image'],
   },
+  'arcee-ai/trinity-large-thinking': {
+    name: 'Arcee Trinity Thinking',
+    costTier: 'hemat',
+    description: 'Arcee AI reasoning model. Murah & pintar untuk analisis. 262K context.',
+  },
+  'deepseek/deepseek-v3.2': {
+    name: 'DeepSeek V3.2',
+    costTier: 'hemat',
+    description: 'Open-source terbaru China. Coding & chat pintar.',
+  },
+  'x-ai/grok-3-mini': {
+    name: 'Grok 3 Mini',
+    costTier: 'hemat',
+    description: 'Model mini xAI. Cepat & pintar.',
+  },
   'qwen/qwen3.5-plus-02-15': {
     name: 'Qwen 3.5 Plus',
     costTier: 'hemat',
     description: 'Alibaba. 1M context, multilingual kuat.',
     caps: ['image', 'video'],
+  },
+  'perplexity/sonar': {
+    name: 'Perplexity Sonar',
+    costTier: 'hemat',
+    description: 'AI + search built-in. Jawaban selalu up-to-date.',
+    caps: ['image'],
   },
   'openai/gpt-4.1-mini': {
     name: 'GPT-4.1 Mini',
@@ -310,11 +319,58 @@ export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
     description: 'GPT terbaru versi lite. 1M context.',
     caps: ['image', 'file'],
   },
+  'google/gemini-2.5-flash': {
+    name: 'Gemini 2.5 Flash',
+    costTier: 'hemat',
+    description: 'Default BikinBot. Tercepat dari Google. 1M context.',
+    caps: ['image', 'audio', 'video', 'file'],
+    isDefault: true,
+  },
+  'moonshotai/kimi-k2.5': {
+    name: 'Kimi K2.5',
+    costTier: 'hemat',
+    description: 'Moonshot AI. Vision support, 262K context.',
+    caps: ['image'],
+  },
   // ─ STANDAR ────────────────────────────────────────────────
+  'bytedance-seed/seed-2.0-lite': {
+    name: 'Seed 2.0 Lite',
+    costTier: 'standar',
+    description: 'ByteDance. Vision + video, 262K context.',
+    caps: ['image', 'video'],
+  },
+  'qwen/qwen3.5-397b-a17b': {
+    name: 'Qwen 3.5 397B',
+    costTier: 'standar',
+    description: 'Qwen terbesar. Vision + video, 262K context.',
+    caps: ['image', 'video'],
+  },
+  'deepseek/deepseek-r1': {
+    name: 'DeepSeek R1',
+    costTier: 'standar',
+    description: 'Reasoning specialist. Untuk analisis mendalam.',
+  },
   'mistralai/mistral-large-2512': {
     name: 'Mistral Large',
     costTier: 'standar',
     description: 'Flagship Mistral. 262K context, cerdas & efisien.',
+    caps: ['image'],
+  },
+  'xiaomi/mimo-v2-pro': {
+    name: 'MiMo V2 Pro',
+    costTier: 'standar',
+    description: 'Xiaomi. Text-only, kuat untuk coding.',
+  },
+  'google/gemini-3-flash-preview': {
+    name: 'Gemini 3 Flash Preview',
+    costTier: 'standar',
+    description: 'Gemini generasi 3. 1M context, semua media.',
+    caps: ['image', 'audio', 'video', 'file'],
+  },
+  'openai/o4-mini': {
+    name: 'o4 Mini',
+    costTier: 'standar',
+    description: 'OpenAI reasoning model. Pintar analisis & logika.',
     caps: ['image'],
   },
   'openai/gpt-4o': {
@@ -329,33 +385,11 @@ export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
     description: 'Generasi terbaru GPT-4. 1M context.',
     caps: ['image', 'file'],
   },
-  'openai/o4-mini': {
-    name: 'o4 Mini',
-    costTier: 'standar',
-    description: 'OpenAI reasoning model. Pintar analisis & logika.',
-    caps: ['image'],
-  },
   'google/gemini-2.5-pro': {
     name: 'Gemini 2.5 Pro',
     costTier: 'standar',
     description: 'Reasoning kuat dari Google. 1M context.',
     caps: ['image', 'audio', 'video', 'file'],
-  },
-  'perplexity/sonar': {
-    name: 'Perplexity Sonar',
-    costTier: 'standar',
-    description: 'AI + search built-in. Jawaban selalu up-to-date.',
-    caps: ['image'],
-  },
-  'x-ai/grok-3-mini': {
-    name: 'Grok 3 Mini',
-    costTier: 'standar',
-    description: 'Model mini xAI. Cepat & pintar.',
-  },
-  'deepseek/deepseek-r1': {
-    name: 'DeepSeek R1',
-    costTier: 'standar',
-    description: 'Reasoning specialist. Untuk analisis mendalam.',
   },
   // ─ PREMIUM ────────────────────────────────────────────────
   'openai/gpt-5.1': {
@@ -369,6 +403,12 @@ export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
     costTier: 'premium',
     description: 'Flagship OpenAI. 400K context.',
     caps: ['image', 'file'],
+  },
+  'google/gemini-3.1-pro-preview': {
+    name: 'Gemini 3.1 Pro Preview',
+    costTier: 'premium',
+    description: 'Gemini terbaru & terkuat. 1M context, semua media.',
+    caps: ['image', 'audio', 'video', 'file'],
   },
   'x-ai/grok-4': {
     name: 'Grok 4',
