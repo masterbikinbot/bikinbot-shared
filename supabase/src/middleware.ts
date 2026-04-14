@@ -68,9 +68,9 @@ export async function updateSession(request: NextRequest) {
   if (isPayGated && user && !isAdminPath) {
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('id')
+      .select('id, status')
       .eq('user_id', user.id)
-      .eq('status', 'active')
+      .in('status', ['active', 'grace'])
       .single()
 
     if (!sub) {
@@ -84,9 +84,9 @@ export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === '/subscribe' && user) {
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('id')
+      .select('id, status')
       .eq('user_id', user.id)
-      .eq('status', 'active')
+      .in('status', ['active', 'grace'])
       .single()
 
     if (sub) {
@@ -112,9 +112,9 @@ export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === '/register' && user) {
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('id')
+      .select('id, status')
       .eq('user_id', user.id)
-      .eq('status', 'active')
+      .in('status', ['active', 'grace'])
       .single()
 
     if (sub) {
