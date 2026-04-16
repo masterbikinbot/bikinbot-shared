@@ -86,7 +86,7 @@ export async function updateSession(request: NextRequest) {
       .from('subscriptions')
       .select('id, status')
       .eq('user_id', user.id)
-      .in('status', ['active', 'grace'])
+      .in('status', ['active'])
       .single()
 
     if (sub) {
