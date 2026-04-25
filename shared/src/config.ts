@@ -213,210 +213,278 @@ export const BOT_PORT_RANGE = {
   end: 19200,
 } as const
 
-// ─────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────
 // AI Models — canonical list, single source for FE + BE
-// ─────────────────────────────────────────────────────────
-export const DEFAULT_MODEL = 'openrouter/google/gemini-2.5-flash'
+// ────────────────────────────────────────────────────────
+//
+// Round 36 / B-Rec-2 — katalog di-cross-check live vs OpenRouter `/api/v1/models`
+// 2026-04-25. Default ke `openrouter/auto` (NotDiamond meta-router) supaya bot
+// baru tidak terkurung di satu model. User boleh override via /settings/routing
+// atau `/model` di Telegram.
+export const DEFAULT_MODEL = 'openrouter/auto'
+
+// Vision-safe fallback yang dijamin support image input. Dipakai saat user
+// model = openrouter/auto atau model lain yang tidak guarantee image support,
+// dan ada image attachment di pesan. Wajib model yang ada di OpenRouter live.
+export const VISION_SAFE_FALLBACK = 'openrouter/google/gemini-2.5-flash'
 
 // OpenRouter prefix to full model ID (for provisioning)
 export const OPENROUTER_MODEL_PREFIX = 'openrouter/'
+
+/** Strict-typed input modalities matching OpenRouter `architecture.input_modalities`. */
+export type InputModality = 'text' | 'image' | 'audio' | 'video' | 'file'
 
 export interface ModelInfo {
   name: string
   costTier: 'gratis' | 'hemat' | 'standar' | 'premium'
   description: string
-  caps?: string[]  // e.g. ['image', 'audio', 'video', 'file']
+  /**
+   * Input modalities yang dijamin model accept. Strict-match OpenRouter live
+   * `architecture.input_modalities`. Validator runtime + dropdown UI pakai field
+   * ini sebagai sumber kebenaran. Field `caps` lama jadi alias untuk
+   * backward compat (akan dihapus setelah konsumen migrasi).
+   */
+  inputModalities: InputModality[]
+  /** @deprecated use `inputModalities`. */
+  caps?: string[]
   isDefault?: boolean
 }
 
-// Curated & verified against OpenRouter live API (11 Apr 2026)
-// IDs must match OpenRouter exactly. Update here = reflected in API + FE.
+// Curated & verified against OpenRouter live API (Round 36 / 2026-04-25).
+// IDs must match OpenRouter `/api/v1/models` exactly. `inputModalities` MUST
+// strict-match `architecture.input_modalities` from live catalog — katalog
+// freshness automation di `bikinbot-be/scripts/refresh-models-catalog.mjs`
+// emit alert kalau ada drift. Update here = reflected in API + FE dropdown.
 export const AVAILABLE_MODELS: Record<string, ModelInfo> = {
-  // ─ GRATIS ────────────────────────────────────────────────
+  // ─ GRATIS ─────────────────────────────────────────────────
   'google/gemma-3-27b-it:free': {
     name: 'Gemma 3 27B',
     costTier: 'gratis',
     description: 'Google gratis. 131K context, bisa lihat gambar.',
-    caps: ['image'],
+    inputModalities: ['text', 'image'],
   },
   'nvidia/nemotron-nano-12b-v2-vl:free': {
     name: 'Nemotron Nano VL',
     costTier: 'gratis',
     description: 'NVIDIA gratis. Vision + video support.',
-    caps: ['image', 'video'],
+    inputModalities: ['text', 'image', 'video'],
   },
   'meta-llama/llama-3.3-70b-instruct:free': {
     name: 'Llama 3.3 70B',
     costTier: 'gratis',
     description: 'Meta gratis. 70B parameter, general purpose.',
+    inputModalities: ['text'],
   },
-  // ─ HEMAT ─────────────────────────────────────────────────
+  // ─ HEMAT ────────────────────────────────────────────────────
   'mistralai/mistral-small-3.1-24b-instruct': {
     name: 'Mistral Small 3.1',
     costTier: 'hemat',
     description: 'Mistral vision. Super murah & cepat.',
-    caps: ['image'],
+    inputModalities: ['text', 'image'],
   },
   'openai/gpt-5-nano': {
     name: 'GPT-5 Nano',
     costTier: 'hemat',
-    description: 'OpenAI termurah. 400K context, vision support.',
-    caps: ['image', 'file'],
+    description: 'OpenAI termurah. 400K context, vision + file support.',
+    inputModalities: ['text', 'image', 'file'],
   },
   'google/gemini-2.0-flash-lite-001': {
     name: 'Gemini 2.0 Flash Lite',
     costTier: 'hemat',
-    description: 'Gemini lite. Semua media, harga hemat.',
-    caps: ['image', 'audio', 'video'],
+    description: 'Gemini lite. Semua media + file, harga hemat.',
+    inputModalities: ['text', 'image', 'audio', 'video', 'file'],
   },
   'minimax/minimax-m2.5': {
     name: 'MiniMax M2.5',
     costTier: 'hemat',
     description: 'MiniMax. Cepat & efisien, 196K context.',
+    inputModalities: ['text'],
   },
   'openai/gpt-4o-mini': {
     name: 'GPT-4o Mini',
     costTier: 'hemat',
     description: 'Versi mini GPT-4o. Cepat & efisien dari OpenAI.',
-    caps: ['image', 'file'],
+    inputModalities: ['text', 'image', 'file'],
   },
   'meta-llama/llama-4-maverick': {
     name: 'Llama 4 Maverick',
     costTier: 'hemat',
     description: 'Meta terbaru. 1M context, sangat efisien.',
-    caps: ['image'],
+    inputModalities: ['text', 'image'],
+  },
+  'meta-llama/llama-4-scout': {
+    name: 'Llama 4 Scout',
+    costTier: 'hemat',
+    description: 'Meta lebih ringan dari Maverick. 327K context, super murah.',
+    inputModalities: ['text', 'image'],
   },
   'arcee-ai/trinity-large-thinking': {
     name: 'Arcee Trinity Thinking',
     costTier: 'hemat',
     description: 'Arcee AI reasoning model. Murah & pintar untuk analisis. 262K context.',
+    inputModalities: ['text'],
   },
   'deepseek/deepseek-v3.2': {
     name: 'DeepSeek V3.2',
     costTier: 'hemat',
     description: 'Open-source terbaru China. Coding & chat pintar.',
+    inputModalities: ['text'],
   },
   'x-ai/grok-3-mini': {
     name: 'Grok 3 Mini',
     costTier: 'hemat',
     description: 'Model mini xAI. Cepat & pintar.',
+    inputModalities: ['text'],
   },
   'qwen/qwen3.5-plus-02-15': {
     name: 'Qwen 3.5 Plus',
     costTier: 'hemat',
     description: 'Alibaba. 1M context, multilingual kuat.',
-    caps: ['image', 'video'],
+    inputModalities: ['text', 'image', 'video'],
+  },
+  'qwen/qwen3-coder-30b-a3b-instruct': {
+    name: 'Qwen3 Coder 30B',
+    costTier: 'hemat',
+    description: 'Spesialis coding MOE Alibaba. SUPER murah, 160K context.',
+    inputModalities: ['text'],
   },
   'perplexity/sonar': {
     name: 'Perplexity Sonar',
     costTier: 'hemat',
     description: 'AI + search built-in. Jawaban selalu up-to-date.',
-    caps: ['image'],
+    inputModalities: ['text', 'image'],
   },
   'openai/gpt-4.1-mini': {
     name: 'GPT-4.1 Mini',
     costTier: 'hemat',
     description: 'GPT terbaru versi lite. 1M context.',
-    caps: ['image', 'file'],
+    inputModalities: ['text', 'image', 'file'],
+  },
+  'anthropic/claude-3.5-haiku': {
+    name: 'Claude 3.5 Haiku',
+    costTier: 'hemat',
+    description: 'Anthropic Haiku murah. 200K context, vision support.',
+    inputModalities: ['text', 'image'],
+  },
+  'anthropic/claude-haiku-4.5': {
+    name: 'Claude Haiku 4.5',
+    costTier: 'hemat',
+    description: 'Haiku generasi terbaru Anthropic. 200K context.',
+    inputModalities: ['text', 'image'],
   },
   'google/gemini-2.5-flash': {
     name: 'Gemini 2.5 Flash',
     costTier: 'hemat',
-    description: 'Default BikinBot. Tercepat dari Google. 1M context.',
-    caps: ['image', 'audio', 'video', 'file'],
-    isDefault: true,
+    description: 'Tercepat dari Google. 1M context, semua media.',
+    inputModalities: ['text', 'image', 'audio', 'video', 'file'],
   },
   'moonshotai/kimi-k2.5': {
     name: 'Kimi K2.5',
     costTier: 'hemat',
     description: 'Moonshot AI. Vision support, 262K context.',
-    caps: ['image'],
+    inputModalities: ['text', 'image'],
   },
-  // ─ STANDAR ────────────────────────────────────────────────
-  'bytedance-seed/seed-2.0-lite': {
-    name: 'Seed 2.0 Lite',
-    costTier: 'standar',
-    description: 'ByteDance. Vision + video, 262K context.',
-    caps: ['image', 'video'],
-  },
+  // ─ STANDAR ──────────────────────────────────────────────────
   'qwen/qwen3.5-397b-a17b': {
     name: 'Qwen 3.5 397B',
     costTier: 'standar',
     description: 'Qwen terbesar. Vision + video, 262K context.',
-    caps: ['image', 'video'],
+    inputModalities: ['text', 'image', 'video'],
   },
   'deepseek/deepseek-r1': {
     name: 'DeepSeek R1',
     costTier: 'standar',
     description: 'Reasoning specialist. Untuk analisis mendalam.',
+    inputModalities: ['text'],
   },
   'mistralai/mistral-large-2512': {
     name: 'Mistral Large',
     costTier: 'standar',
     description: 'Flagship Mistral. 262K context, cerdas & efisien.',
-    caps: ['image'],
+    inputModalities: ['text', 'image'],
   },
-  'xiaomi/mimo-v2-pro': {
-    name: 'MiMo V2 Pro',
+  'mistralai/codestral-2508': {
+    name: 'Codestral 2508',
     costTier: 'standar',
-    description: 'Xiaomi. Text-only, kuat untuk coding.',
+    description: 'Mistral coding mid-tier. 256K context, optimal untuk dev.',
+    inputModalities: ['text'],
   },
   'google/gemini-3-flash-preview': {
     name: 'Gemini 3 Flash Preview',
     costTier: 'standar',
-    description: 'Gemini generasi 3. 1M context, semua media.',
-    caps: ['image', 'audio', 'video', 'file'],
+    description: 'Gemini generasi 3. 1M context, semua media + file.',
+    inputModalities: ['text', 'image', 'audio', 'video', 'file'],
   },
   'openai/o4-mini': {
     name: 'o4 Mini',
     costTier: 'standar',
     description: 'OpenAI reasoning model. Pintar analisis & logika.',
-    caps: ['image'],
+    inputModalities: ['text', 'image', 'file'],
   },
   'openai/gpt-4o': {
     name: 'GPT-4o',
     costTier: 'standar',
     description: 'Flagship OpenAI. Cepat & sangat cerdas.',
-    caps: ['image', 'file'],
+    inputModalities: ['text', 'image', 'file'],
   },
   'openai/gpt-4.1': {
     name: 'GPT-4.1',
     costTier: 'standar',
     description: 'Generasi terbaru GPT-4. 1M context.',
-    caps: ['image', 'file'],
+    inputModalities: ['text', 'image', 'file'],
   },
   'google/gemini-2.5-pro': {
     name: 'Gemini 2.5 Pro',
     costTier: 'standar',
     description: 'Reasoning kuat dari Google. 1M context.',
-    caps: ['image', 'audio', 'video', 'file'],
+    inputModalities: ['text', 'image', 'audio', 'video', 'file'],
   },
-  // ─ PREMIUM ────────────────────────────────────────────────
+  'anthropic/claude-sonnet-4.5': {
+    name: 'Claude Sonnet 4.5',
+    costTier: 'standar',
+    description: 'Top NotDiamond pick. 1M context, image+file.',
+    inputModalities: ['text', 'image', 'file'],
+  },
+  // ─ PREMIUM ──────────────────────────────────────────────────
   'openai/gpt-5.1': {
     name: 'GPT-5.1',
     costTier: 'premium',
     description: 'Next-gen GPT. Terpintar untuk tugas kompleks.',
-    caps: ['image', 'file'],
+    inputModalities: ['text', 'image', 'file'],
   },
   'openai/gpt-5': {
     name: 'GPT-5',
     costTier: 'premium',
     description: 'Flagship OpenAI. 400K context.',
-    caps: ['image', 'file'],
+    inputModalities: ['text', 'image', 'file'],
   },
   'google/gemini-3.1-pro-preview': {
     name: 'Gemini 3.1 Pro Preview',
     costTier: 'premium',
-    description: 'Gemini terbaru & terkuat. 1M context, semua media.',
-    caps: ['image', 'audio', 'video', 'file'],
+    description: 'Gemini terbaru & terkuat. 1M context, semua media + file.',
+    inputModalities: ['text', 'image', 'audio', 'video', 'file'],
+  },
+  'anthropic/claude-opus-4.5': {
+    name: 'Claude Opus 4.5',
+    costTier: 'premium',
+    description: 'Anthropic flagship reasoning. 200K context, image+file.',
+    inputModalities: ['text', 'image', 'file'],
   },
   'x-ai/grok-4': {
     name: 'Grok 4',
     costTier: 'premium',
     description: 'Flagship xAI. 256K context, coding expert.',
-    caps: ['image'],
+    inputModalities: ['text', 'image', 'file'],
   },
 }
+
+/**
+ * OpenRouter meta-router (NotDiamond) catalog ID. Dipakai sebagai
+ * `DEFAULT_MODEL` dan exposed di FE dropdown sebagai opsi top "Auto".
+ * Bukan bagian dari `AVAILABLE_MODELS` karena dia bukan model spesifik
+ * — dia routes ke salah satu top performer berdasarkan prompt.
+ */
+export const OPENROUTER_AUTO_MODEL = 'openrouter/auto'
 
 // ─────────────────────────────────────────────────────────
 // Referral
