@@ -539,5 +539,11 @@ export const SKILL_PATHS = {
 
 // --- Added during Phase 3 centralization ---
 export const CONTABO_PASSWORD = process.env.CONTABO_PASSWORD || ''
+// Round 36 hotfix — path to the SSH private key used by `provisioning.ts:sshExec`
+// to reach `root@$VPS_HOST` on Contabo. Key auth replaces the legacy
+// `sshpass -p $CONTABO_PASSWORD` path which silently broke when Contabo's
+// root password was rotated upstream and never propagated to our env file.
+// Empty string means "fall back to password" (kept as a safety net for dev).
+export const CONTABO_KEY_PATH = process.env.CONTABO_KEY_PATH || ''
 export const ADMIN_KEY = process.env.ADMIN_KEY || ''
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0'
