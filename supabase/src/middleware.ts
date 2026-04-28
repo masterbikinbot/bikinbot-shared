@@ -42,9 +42,31 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // 2026-04-28 hardening — swallow `refresh_token_already_used` race.
+  // Two concurrent in-flight requests (multi-tab, browser pre-fetch, etc.)
+  // both try to redeem the same refresh token within a few hundred ms;
+  // Supabase explicitly invalidates a refresh token after first use, so the
+  // loser of the race gets `AuthApiError: Invalid Refresh Token: Already
+  // Used`. This is benign — the winning request already rotated the
+  // session — but pre-hardening the SDK rethrew it and pm2 logged 90+
+  // events per day. We treat the loser as "unauthenticated for this
+  // request" (no user) which the existing `isProtectedPath && !user` gate
+  // already handles correctly via /login redirect.
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user'] = null
+  try {
+    const result = await supabase.auth.getUser()
+    user = result.data.user
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code
+    if (code !== 'refresh_token_already_used') {
+      // Genuine auth failure — still surface so we don't hide real bugs.
+      // Logged once via console.warn (rate-limited at the runtime level by
+      // pm2 log rotation) instead of unhandled rejection.
+      // eslint-disable-next-line no-console
+      console.warn('[supabase-middleware] auth.getUser failed:', code || (err as Error)?.message)
+    }
+    // user stays null
+  }
 
   // Protected routes (require login)
   const protectedPaths = ['/dashboard', '/settings', '/analytics', '/conversations', '/billing', '/setup', '/subscribe', '/support', '/admin']
