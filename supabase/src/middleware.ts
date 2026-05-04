@@ -102,19 +102,30 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // If user has active subscription and visits /subscribe, redirect to dashboard
+  // If user has active subscription and visits /subscribe, redirect to dashboard.
+  //
+  // 2026-05-04 fix — honour explicit renewal intent. The Lever Z renewal
+  // CTA on Beranda (RenewalBanner / UpgradePrompt) navigates to
+  // `/subscribe?renew=true` precisely so a near-expiry user can pay early.
+  // Their subscription is still `status='active'` while inside the 7-day
+  // window, so without this bypass the middleware bounces them straight
+  // back to /dashboard — the exact "tombol Perpanjang tidak berfungsi /
+  // user diarahkan ke beranda" symptom reported on prod.
   if (request.nextUrl.pathname === '/subscribe' && user) {
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('id, status')
-      .eq('user_id', user.id)
-      .in('status', ['active'])
-      .single()
+    const renewIntent = request.nextUrl.searchParams.get('renew') === 'true'
+    if (!renewIntent) {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .in('status', ['active'])
+        .single()
 
-    if (sub) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
+      if (sub) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
     }
   }
 
