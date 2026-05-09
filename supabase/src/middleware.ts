@@ -1,13 +1,59 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Tier 4 Phase 2 (2026-05-09) — protected paths kept in sync with the
+// `protectedPaths` array below. Defined at module scope so the env-missing
+// fast-path can use the same gate as the in-flow auth check.
+const PROTECTED_PATH_PREFIXES = [
+  '/dashboard', '/settings', '/analytics', '/conversations',
+  '/billing', '/setup', '/subscribe', '/support', '/admin',
+] as const
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PATH_PREFIXES.some((p) => pathname.startsWith(p))
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  // If Supabase is not configured, allow all requests through
+  // Tier 4 Phase 2 (2026-05-09) — fail-closed when Supabase env is missing.
+  //
+  // Old behaviour: any unconfigured env let EVERY request through, including
+  // protected paths like /dashboard or /admin. In a deploy where the env
+  // failed to interpolate (e.g. PM2 restart with stale shell env, container
+  // launched without secrets) the dashboard would render with no session
+  // checks and downstream API calls would 401 — user-visible breakage but
+  // no security audit trail.
+  //
+  // New behaviour:
+  //   - production + protected path: return 503 with a clear config-error
+  //     message so monitoring (status page / Cloudflare alerts) catches the
+  //     misconfiguration immediately and protected pages don't render at all;
+  //   - production + public path: let through so the marketing site / login
+  //     stays visible (login itself will fail-soft because the supabase
+  //     client throws when env is missing, but that's a recoverable UX path);
+  //   - non-production: keep legacy let-through so local dev without
+  //     Supabase still works.
+  //
+  // Always emit a console.error so the misconfiguration is visible in logs.
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const isProd = process.env.NODE_ENV === 'production'
+    const protectedHit = isProtectedPath(request.nextUrl.pathname)
+    // eslint-disable-next-line no-console
+    console.error(
+      `[supabase-middleware] Supabase env missing (URL=${!!process.env.NEXT_PUBLIC_SUPABASE_URL} ANON_KEY=${!!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}) prod=${isProd} path=${request.nextUrl.pathname} protected=${protectedHit}`,
+    )
+    if (isProd && protectedHit) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Service Misconfigured',
+          detail: 'Authentication backend unavailable. Operator: confirm NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are set in the runtime environment.',
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } },
+      )
+    }
     return supabaseResponse
   }
 
@@ -68,11 +114,12 @@ export async function updateSession(request: NextRequest) {
     // user stays null
   }
 
-  // Protected routes (require login)
-  const protectedPaths = ['/dashboard', '/settings', '/analytics', '/conversations', '/billing', '/setup', '/subscribe', '/support', '/admin']
-  const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+  // Protected routes (require login). Pulled from the module-scope constant
+  // so the env-missing fast-path above and this in-flow check can never
+  // drift out of sync.
+  const isProtectedPathHit = isProtectedPath(request.nextUrl.pathname)
 
-  if (isProtectedPath && !user) {
+  if (isProtectedPathHit && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', request.nextUrl.pathname)
