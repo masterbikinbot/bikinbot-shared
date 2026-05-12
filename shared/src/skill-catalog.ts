@@ -4,7 +4,7 @@
  * Only skills in this list can be installed by users.
  * Each skill is audited for security before being added.
  *
- * Max 5 skills per user (to conserve disk space).
+ * Max 20 skills per user (disk quota per user is enforced separately).
  */
 
 export interface CatalogSkill {
@@ -17,7 +17,7 @@ export interface CatalogSkill {
   popular?: boolean
 }
 
-export const MAX_SKILLS_PER_USER = 5
+export const MAX_SKILLS_PER_USER = 20
 
 export const SKILL_CATALOG: CatalogSkill[] = [
   // ═══ Produktivitas ═══
