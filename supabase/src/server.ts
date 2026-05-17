@@ -1,31 +1,112 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 
-export async function createClient() {
-  const cookieStore = await cookies()
+// 2026-05-17 (BikinBot Plan 39b8f229 / Fastify Sprint F):
+// Two factories live in this file:
+//
+//   1. `createServerClientWithCookies(handlers)` — framework-agnostic.
+//      The HTTP framework (Next.js, Fastify, Express, ...) hands us its
+//      own cookie getter/setter and we wrap it for `@supabase/ssr`.
+//      This is the API to call from new code, including the Fastify
+//      backend migration that lives in `bikinbot-be`.
+//
+//   2. `createClient()` — Next.js convenience wrapper kept for backward
+//      compatibility with the existing FE (`bikinbot-fe`) and BE
+//      route handlers that still rely on `cookies()` from
+//      `next/headers`. The `next/headers` import is intentionally LAZY
+//      (dynamic import inside the function body) so that this entire
+//      `server.ts` module can be imported from non-Next.js runtimes
+//      (e.g. Fastify boot path) without `next/headers` exploding at
+//      module-load time.
+//
+// Once `bikinbot-fe` has also migrated off the no-args `createClient()`
+// pattern (no concrete timeline yet), the legacy wrapper below can be
+// deleted.
 
+export interface SupabaseCookieToSet {
+  name: string
+  value: string
+  // Mirrors @supabase/ssr's loose cookie option shape. Kept as a wide
+  // type so both Next.js's `RequestCookie` options and @fastify/cookie's
+  // `CookieSerializeOptions` slot in without an extra cast at the call site.
+  options?: Record<string, unknown>
+}
+
+export interface SupabaseCookieHandlers {
+  getAll(): Array<{ name: string; value: string }>
+  /**
+   * Persist cookies back to the response. Optional because some callers
+   * (e.g. cron / service-role paths, read-only hooks) intentionally drop
+   * Supabase's token-refresh writes.
+   */
+  setAll?(cookiesToSet: SupabaseCookieToSet[]): void
+}
+
+/**
+ * Framework-agnostic factory. Use this from any HTTP framework by passing
+ * cookie handlers wired to that framework's request/response objects.
+ *
+ * Example (Fastify):
+ *
+ *   createServerClientWithCookies({
+ *     getAll: () => parseCookieHeader(req.headers.cookie ?? ''),
+ *     setAll: (cookies) => cookies.forEach(c =>
+ *       reply.setCookie(c.name, c.value, c.options as any)
+ *     ),
+ *   })
+ */
+export function createServerClientWithCookies(handlers: SupabaseCookieHandlers) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll()
+          return handlers.getAll()
         },
         setAll(cookiesToSet) {
+          if (!handlers.setAll) return
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            handlers.setAll(cookiesToSet as SupabaseCookieToSet[])
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Same semantics as the legacy wrapper: setAll inside a
+            // Server Component or any read-only context is non-fatal.
           }
         },
       },
-    }
+    },
   )
+}
+
+/**
+ * Next.js-flavoured factory. Uses `cookies()` from `next/headers` and is
+ * intended for Next.js Server Components, Route Handlers, and Server
+ * Actions. The `next/headers` import is lazy (dynamic import) so
+ * non-Next.js runtimes can still safely import this module.
+ */
+export async function createClient() {
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+
+  return createServerClientWithCookies({
+    getAll() {
+      return cookieStore.getAll()
+    },
+    setAll(cookiesToSet) {
+      try {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          cookieStore.set(
+            name,
+            value,
+            options as Parameters<typeof cookieStore.set>[2],
+          ),
+        )
+      } catch {
+        // The `setAll` method was called from a Server Component.
+        // This can be ignored if you have middleware refreshing
+        // user sessions.
+      }
+    },
+  })
 }
 
 export async function getUser() {
